@@ -13,6 +13,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   Node,
+  Edge, // <--- Added this import
   NodeMouseHandler,
   Panel,
 } from '@xyflow/react';
@@ -34,8 +35,10 @@ type NodeData = {
 };
 
 function CanvasInternal() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  // FIX: We added <Node> and <Edge> generics here so TypeScript knows what to expect
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  
   const { screenToFlowPosition } = useReactFlow();
   const router = useRouter();
 
