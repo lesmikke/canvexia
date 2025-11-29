@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ReactFlow,
@@ -13,7 +13,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   Node,
-  Edge, // <--- Added this import
+  Edge,
   NodeMouseHandler,
   Panel,
 } from '@xyflow/react';
@@ -25,22 +25,22 @@ import { supabase } from '@/lib/supabaseClient';
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
-const nodeTypes = {
-  textNode: TextNode,
-};
-
 type NodeData = {
   label: string;
   content: string;
 };
 
 function CanvasInternal() {
-  // FIX: We added <Node> and <Edge> generics here so TypeScript knows what to expect
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   
   const { screenToFlowPosition } = useReactFlow();
   const router = useRouter();
+
+  // FIX: Memoize nodeTypes so React Flow doesn't complain during build
+  const nodeTypes = useMemo(() => ({
+    textNode: TextNode,
+  }), []);
 
   const [mapId, setMapId] = useState<string | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -48,7 +48,6 @@ function CanvasInternal() {
   const [editorTitle, setEditorTitle] = useState('');
   const [editorContent, setEditorContent] = useState('');
 
-  // 1. INITIALIZATION: Check Auth & Get Map
   useEffect(() => {
     const initCanvas = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -149,10 +148,11 @@ function CanvasInternal() {
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
-    const data = node.data as NodeData;
+    // Safe cast since we know our nodes have this data
+    const data = node.data as unknown as NodeData;
     setEditingNodeId(node.id);
-    setEditorTitle(data.label);
-    setEditorContent(data.content || '');
+    setEditorTitle(data?.label || 'Untitled');
+    setEditorContent(data?.content || '');
     setIsEditorOpen(true);
   }, []);
 
@@ -181,7 +181,6 @@ function CanvasInternal() {
     [editingNodeId, setNodes]
   );
 
-  // --- LOGOUT HANDLER ---
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
@@ -206,7 +205,6 @@ function CanvasInternal() {
         <Background gap={12} size={1} />
         <Controls />
         
-        {/* TOP RIGHT PANEL */}
         <Panel position="top-right" className="bg-white p-2 rounded-md shadow-md border border-slate-200">
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-500 hover:text-red-700 hover:bg-red-50">
             <LogOut className="w-4 h-4 mr-2" />
